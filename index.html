@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b5d8a">
+<title>Dawkowanie podchlorynu</title>
+<style>
+:root{--bg:#f4f7fa;--card:#fff;--ink:#14212b;--mute:#5b6b78;--line:#d6dee5;--accent:#0b5d8a;--ok:#c8efd2;--okInk:#0d5a26;--warn:#fff1c7;--bad:#fde0dc;--badInk:#8a1f12}
+@media (prefers-color-scheme:dark){:root{--bg:#0f161c;--card:#18222b;--ink:#e6edf2;--mute:#94a5b3;--line:#2c3a46;--accent:#5fb3e4;--ok:#1d4d2b;--okInk:#bff0cc;--warn:#4a3d12;--bad:#4d1f1a;--badInk:#ffc9c0}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+header{background:var(--accent);color:#fff;padding:14px 16px}
+@media (prefers-color-scheme:dark){header{color:#0f161c}}
+h1{margin:0;font-size:1.25rem}
+header p{margin:2px 0 0;font-size:.9rem;opacity:.9}
+main{max-width:720px;margin:0 auto;padding:12px 16px 40px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0}
+h2{font-size:1.05rem;margin:0 0 10px}
+label{display:block;font-size:.9rem;color:var(--mute);margin-bottom:4px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid .full{grid-column:1/-1}
+select{width:100%;font-size:1.1rem;padding:10px 8px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+input{width:100%;font-size:1.25rem;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+input:focus{outline:2px solid var(--accent);border-color:transparent}
+.big{font-size:2rem;font-weight:700;margin:6px 0 2px}
+.res{border-radius:12px;padding:12px;margin-top:12px}
+.res.ok{background:var(--ok);color:var(--okInk)}
+.res.warn{background:var(--warn)}
+.res.bad{background:var(--bad);color:var(--badInk)}
+.res p{margin:4px 0}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:.95rem}
+th,td{border:1px solid var(--line);padding:7px 4px;text-align:center}
+th{background:var(--bg);font-weight:600}
+td.hit{background:var(--ok);color:var(--okInk);font-weight:700}
+small,.note{color:var(--mute);font-size:.85rem}
+ul{padding-left:20px;margin:6px 0}li{margin:4px 0}
+.formula{font-family:ui-monospace,Consolas,monospace;font-size:.85rem;background:var(--bg);padding:8px;border-radius:8px;overflow-x:auto}
+</style>
+</head>
+<body>
+<header>
+<h1>Dawkowanie podchlorynu</h1>
+<p>Dezynfekcja odcinka sieci przez hydrant</p>
+</header>
+<main>
+
+<section class="card">
+<h2>Dane wejściowe</h2>
+<div class="grid">
+<div class="full"><label for="q">Przepływ na hydrancie płuczącym [l/s]</label>
+<input id="q" type="number" inputmode="decimal" step="0.1" min="0.1" value="3"></div>
+<div><label for="c">Chlor w podchlorynie [g/l]</label>
+<input id="c" type="number" inputmode="decimal" step="1" min="1" value="150"></div>
+<div><label for="d">Dawka docelowa [mg/l]</label>
+<input id="d" type="number" inputmode="decimal" step="1" min="1" value="25"></div>
+<div class="full"><label for="p">Maks. wydajność pompki [l/h]</label>
+<input id="p" type="number" inputmode="decimal" step="0.1" min="0.1" value="1.9"></div>
+</div>
+<p class="note">Podchloryn handlowy 15% ≈ 150 g/l chloru aktywnego. Najlepiej wpisz wynik miareczkowania.</p>
+<div id="out" class="res"></div>
+</section>
+
+<section class="card">
+<h2>Odcinek sieci</h2>
+<div class="grid">
+<div class="full"><label for="mat">Materiał rury</label>
+<select id="mat"></select></div>
+<div><label for="dn">Średnica</label>
+<select id="dn"></select></div>
+<div><label for="len">Długość [m]</label>
+<input id="len" type="number" inputmode="decimal" step="1" min="1" value="200"></div>
+</div>
+<div id="seg" class="res"></div>
+<div class="tw" style="margin-top:12px"><table id="dtab"></table></div>
+<p class="note">Średnice wewnętrzne typowe dla danego materiału. Stare rury (stal, żeliwo szare) bywają zawężone osadami — rzeczywista objętość może być mniejsza. Przepływ przy pełnym otwarciu zależy od ciśnienia i hydrantu (hydrant DN80 zwykle 10–15 l/s), nie od średnicy rury.</p>
+</section>
+
+<section class="card">
+<h2>Tabela: stężenie chloru w sieci [mg/l]</h2>
+<div class="tw"><table id="tab"></table></div>
+<p class="note">Zielone: dawka zbliżona do docelowej (−15% / +25%).</p>
+</section>
+
+<section class="card">
+<h2>Procedura w skrócie</h2>
+<ul>
+<li>Odetnij odcinek zasuwami, zamknij przyłącza, uprzedź odbiorców.</li>
+<li>Napełnij odcinek wodą o ok. 25 mg/l (20–50 mg/l), kontrolując chlor na hydrancie płuczącym.</li>
+<li>Kontakt 24 h, po nim chlor wolny <b>≥10 mg/l</b>. Jeśli mniej, powtórz.</li>
+<li>Płucz czystą wodą do <b>≤0,3 mg/l</b>, potem badania mikrobiologiczne.</li>
+<li>Wodę z płukania odchloruj tiosiarczanem sodu (ok. 2–3 g na 1 g chloru) przed zrzutem.</li>
+<li>Przy koncentracie: gogle, rękawice nitrylowe, fartuch. Z dala od kwasów. Zawór zwrotny na wtrysku.</li>
+</ul>
+</section>
+
+<section class="card">
+<h2>Wzory</h2>
+<div class="formula">Q_pompy [l/h] = Q_hydr [l/s] × 3,6 × dawka [mg/l] / C [g/l]<br>
+Stężenie [mg/l] = Q_pompy [l/h] × C [g/l] / (Q_hydr [l/s] × 3,6)</div>
+<p class="note">Narzędzie pomocnicze. Wynik zawsze potwierdź pomiarem chloru na hydrancie płuczącym.</p>
+</section>
+
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const num=id=>parseFloat(String($(id).value).replace(',','.'));
+const f=(x,n=1)=>x.toLocaleString('pl-PL',{minimumFractionDigits:n,maximumFractionDigits:n});
+const FLOWS=[1,1.5,2,2.5,3,4,5,6,7,8,9,10],PCTS=[.25,.5,.75,1];
+function calc(){
+  const q=num('q'),c=num('c'),d=num('d'),p=num('p'),out=$('out');
+  if(!(q>0&&c>0&&d>0&&p>0)){out.className='res bad';out.innerHTML='<p>Uzupełnij wszystkie pola liczbami większymi od zera.</p>';}
+  else{
+    const need=q*3.6*d/c, pct=need/p*100, maxC=p*c/(q*3.6), qMax=p*c/(3.6*d);
+    if(pct<=100){
+      out.className='res '+(pct<10?'warn':'ok');
+      out.innerHTML=`<p>Ustaw pompkę na</p><div class="big">${f(pct,0)}%</div>
+      <p>czyli <b>${f(need,2)} l/h</b> podchlorynu → ok. <b>${f(d,0)} mg/l</b> w sieci.</p>
+      ${pct<10?'<p>Bardzo niskie ustawienie pompki — dozowanie może być niestabilne. Rozważ większy przepływ.</p>':''}
+      <p><small>Przy 100% pompki: ${f(maxC)} mg/l.</small></p>`;
+    }else{
+      out.className='res bad';
+      out.innerHTML=`<p><b>Pompka nie da rady.</b> Potrzeba ${f(need,2)} l/h (${f(pct,0)}%).</p>
+      <p>Przy 100% pompki uzyskasz tylko <b>${f(maxC)} mg/l</b>.</p>
+      <p>Zmniejsz przepływ do <b>≤${f(qMax)} l/s</b>, aby uzyskać ${f(d,0)} mg/l.</p>`;
+    }
+  }
+  let h='<tr><th>l/s</th>'+PCTS.map(x=>`<th>${x*100}%<br><small>${f(x*(p||0),2)} l/h</small></th>`).join('')+'</tr>';
+  for(const fl of FLOWS){
+    h+=`<tr><th>${f(fl)}</th>`;
+    for(const x of PCTS){const v=x*p*c/(fl*3.6);const hit=v>=d*.85&&v<=d*1.25;h+=`<td class="${hit?'hit':''}">${isFinite(v)?f(v):'–'}</td>`;}
+    h+='</tr>';
+  }
+  $('tab').innerHTML=h;
+  seg();
+  save();
+}
+// [etykieta, średnica wewnętrzna mm]
+const PE=(sdr)=>[63,90,110,125,160,180,200,225,250,280,315].map(o=>[`${o} mm`,o*(1-2/sdr)]);
+const PIPES={
+ 'pe11':{n:'PE100 SDR11 (PN16)',l:PE(11)},
+ 'pe17':{n:'PE100 SDR17 (PN10)',l:PE(17)},
+ 'pvc':{n:'PVC-U PN10 (SDR21)',l:[90,110,160,200,225,250,280,315].map(o=>[`${o} mm`,o*(1-2/21)])},
+ 'st':{n:'Stal',l:[['DN80 (88,9)',82.5],['DN100 (114,3)',107.1],['DN125 (139,7)',131.7],['DN150 (168,3)',159.3],['DN200 (219,1)',207.3],['DN250 (273)',260.4],['DN300 (323,9)',309.7]]},
+ 'zs':{n:'Żeliwo sferoidalne (z wykładziną)',l:[['DN80',82.6],['DN100',102.6],['DN125',128],['DN150',154],['DN200',205],['DN250',256],['DN300',308]]},
+ 'zg':{n:'Żeliwo szare (stare)',l:[['DN80',80],['DN100',100],['DN125',125],['DN150',150],['DN200',200],['DN250',250],['DN300',300]]}
+};
+const area=id=>Math.PI*(id/1000)**2/4;
+function fillDn(keep){const m=PIPES[$('mat').value];$('dn').innerHTML=m.l.map((x,i)=>`<option value="${i}">${x[0]} — wewn. ${f(x[1],0)} mm</option>`).join('');if(keep!=null&&keep<m.l.length)$('dn').value=keep;}
+function tmin(min){if(!isFinite(min))return'–';if(min<60)return f(min,0)+' min';return Math.floor(min/60)+' h '+Math.round(min%60)+' min';}
+function seg(){
+  const m=PIPES[$('mat').value],[lab,id]=m.l[+$('dn').value||0],L=num('len'),q=num('q'),c=num('c'),d=num('d'),out=$('seg');
+  const A=area(id);
+  let t='<tr><th>Średnica</th><th>wewn. mm</th><th>m³/100 m</th><th>0,5 m/s</th><th>1 m/s</th><th>1,5 m/s</th></tr>';
+  m.l.forEach(([lb,i],k)=>{const a=area(i);t+=`<tr${k==+$('dn').value?' style="outline:2px solid var(--accent)"':''}><th>${lb}</th><td>${f(i,0)}</td><td>${f(a*100,2)}</td><td>${f(a*500)}</td><td>${f(a*1000)}</td><td>${f(a*1500)}</td></tr>`;});
+  $('dtab').innerHTML=t+'<tr><td colspan="6" class="note">Przepływ w l/s przy danej prędkości wody w rurze</td></tr>';
+  if(!(L>0&&q>0&&c>0&&d>0)){out.className='res bad';out.innerHTML='<p>Uzupełnij długość i dane wejściowe.</p>';return;}
+  const V=A*L, v=q/1000/A, fill=V*1000/q/60, nacl=V*d/c, qf=A*1500, flush=3*V*1000/Math.min(qf,15)/60;
+  out.className='res ok';
+  out.innerHTML=`<p>Objętość odcinka: <b>${f(V,2)} m³</b></p>
+  <p>Prędkość przy ${f(q)} l/s: <b>${f(v,2)} m/s</b></p>
+  <p>Czas napełnienia przy ${f(q)} l/s: <b>${tmin(fill)}</b></p>
+  <p>Podchloryn na samo napełnienie (${f(d,0)} mg/l): <b>${f(nacl,1)} l</b> — przygotuj ok. <b>${f(Math.max(nacl*2,1),0)} l</b> (zapas na wypieranie i kontrolę)</p>
+  <hr style="border:0;border-top:1px solid currentColor;opacity:.3">
+  <p>Płukanie końcowe przy 1,5 m/s: <b>${f(qf)} l/s</b>${qf>15?' — <b>hydrant DN80 tego nie zapewni</b>, płucz z max. wydajnością i dłużej':''}</p>
+  <p>3 wymiany objętości (${f(3*V,1)} m³) przy ${f(Math.min(qf,15))} l/s: ok. <b>${tmin(flush)}</b></p>`;
+}
+function save(){try{localStorage.setItem('dzs',JSON.stringify({q:$('q').value,c:$('c').value,d:$('d').value,p:$('p').value,mat:$('mat').value,dn:$('dn').value,len:$('len').value}))}catch(e){}}
+$('mat').innerHTML=Object.entries(PIPES).map(([k,v])=>`<option value="${k}">${v.n}</option>`).join('');
+let s=null;try{s=JSON.parse(localStorage.getItem('dzs')||'null');}catch(e){}
+if(s){for(const k of['q','c','d','p','len'])if(s[k])$(k).value=s[k];if(s.mat&&PIPES[s.mat])$('mat').value=s.mat;}
+fillDn(s&&s.dn!=null?+s.dn:3);
+for(const k of['q','c','d','p'])$(k).addEventListener('input',calc);
+$('len').addEventListener('input',()=>{seg();save();});
+$('dn').addEventListener('change',()=>{seg();save();});
+$('mat').addEventListener('change',()=>{fillDn(0);seg();save();});
+calc();
+</script>
+</body>
+</html>
